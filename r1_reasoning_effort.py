@@ -69,10 +69,23 @@ class Pipe:
         self.__user__ = None
         self.__request__ = None
         self._reset_state()
-        self.replacement_prompts = [ "\nHold on - let me think deeper about this ", 
-                                     "\nPerhaps a deeper perspective would help ",
-                                     "\nLet me think "
-                                    ]
+        self.replacement_prompts = [ 
+                "\nHold on - let me think deeper about this ", 
+                "\nPerhaps a deeper perspective would help ",
+                "\nLet me think ",
+                "\nLet's take a step back and reconsider ",
+                "\nLet me ponder this for a moment ",
+                "\nI need a moment to reflect on this ",
+                "\nLet’s explore this from another angle ",
+                "\nThis requires a bit more thought ",
+                "\nI should analyze this further ",
+                "\nLet me reconsider this from a different perspective ",
+                "\nI might need to rethink this ",
+                "\nPerhaps there's a more nuanced way to approach this ",
+                "\nLet's pause and reflect on this more deeply ",
+                "\nI should take a closer look at this ",
+                "\nA moment of deeper thought might help "
+            ]
 
     def _reset_state(self):
         self.current_effort = 0
