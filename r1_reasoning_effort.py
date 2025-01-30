@@ -69,9 +69,9 @@ class Pipe:
         self.__user__ = None
         self.__request__ = None
         self._reset_state()
-        self.replacement_prompts = [ "Hold on - let me think deeper about this ", 
-                                     "Perhaps a deeper perspective would help ",
-                                     "Let me think "
+        self.replacement_prompts = [ "\nHold on - let me think deeper about this ", 
+                                     "\nPerhaps a deeper perspective would help ",
+                                     "\nLet me think "
                                     ]
 
     def _reset_state(self):
@@ -137,51 +137,42 @@ class Pipe:
 
     async def _generate_reasoning(self, messages: List[Dict], __event_emitter__):
         """Core reasoning pipeline with token interception"""
-        max_attempts = self.valves.REASONING_EFFORT * 2  # Prevent infinite loops
         attempt = 0
-        current_messages = messages.copy()
+        original_messages = messages.copy()
         self.buffer = ""  # Reset buffer for new response
-        while self.current_effort < self.valves.REASONING_EFFORT and attempt < max_attempts:
-            print('attempt', attempt)
+        while self.current_effort < self.valves.REASONING_EFFORT:
             attempt += 1
             try:
                 # Create fresh copy of messages for this attempt
-                # current_messages = original_messages.copy()
+                current_messages = original_messages.copy()
                 if self.current_effort > 0:
                     # Add previous iteration's final response as context
-                    
-                    current_messages.append({"role": "assistant", "content": self.buffer +random.choice(self.replacement_prompts)})
-                    print(current_messages)
+                    extension = random.choice(self.replacement_prompts)
+                    content = self.buffer + extension
+                    current_messages.append({"role": "assistant", "content": content })
+                    yield extension
 
                 response = await self.get_response(
                     model=self.valves.REASONING_MODEL,
                     messages=current_messages,
                     stream=True
                 )
-                end_token_found = False
 
                 async for content in self._handle_api_stream(response):
                     
-
                     # Check for end token in the accumulated buffer
                     if self.valves.END_THINK_TOKEN  not in content:
                         self.buffer += content
                         self.generated_tokens += len(content)
                         yield content
                     else:
-                        print('END_THINK_TOKEN', content)
-                        end_token_found = True
-                        break
-                     
-                if end_token_found:
-                    self.current_effort += 1
-                    yield self.valves.END_THINK_TOKEN
-                    # if self.current_effort < self.valves.REASONING_EFFORT:
-                    #     # Update original messages with completed reasoning
-                    #     original_messages.append({"role": "assistant", "content": parts[0] + random.choice(self.replacement_prompts)})
-                else:
-                    # No end token found, break the loop
-                    break
+                        self.current_effort += 1
+                        if self.current_effort < self.valves.REASONING_EFFORT:
+                            # 
+                            yield "<think>\n"
+                            break
+                        else:
+                            yield content
 
             except Exception as e:
                 await __event_emitter__({
@@ -189,10 +180,7 @@ class Pipe:
                     "data": {"description": f"Reasoning error: {str(e)}", "done": False}
                 })
                 break
-
-        # Yield any remaining content after final iteration
-        # if self.buffer:
-        #     yield self.buffer
+            
 
     async def pipe(self, body: dict, __user__: dict, __event_emitter__, __request__: Request, __task__=None):
         self.__user__ = User(**__user__)
@@ -200,10 +188,9 @@ class Pipe:
         self._reset_state()
         
         if __task__ is not None:
-            return "R1 Reasoning Effort"
+            return body["messages"][:20]
         
         try:
-            # Reasoning Phase
             async for content in self._generate_reasoning(body["messages"], __event_emitter__):
                 
                 await __event_emitter__({
@@ -225,3 +212,4 @@ class Pipe:
             })
         
         return ""
+    
