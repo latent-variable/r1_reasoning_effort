@@ -3,7 +3,7 @@
 ## Overview
 **R1 Reasoning Effort** is a multi-API reasoning pipeline within the [open-webui](https://github.com/open-webui/open-webui) that integrates OpenAI and Ollama support for generating responses with different levels of reasoning effort. It allows for iterative refinements in reasoning, incorporating multiple reasoning iterations with context-sensitive responses.
 
-[YouTube demo](https://youtube.com/shorts/9-w2yMoxQBM?feature=share)
+[![Watch the demo](https://img.youtube.com/vi/9-w2yMoxQBM/0.jpg)](https://youtu.be/9-w2yMoxQBM)
 
 This project is inspired by [r1-overthinker](https://github.com/qunash/r1-overthinker), extending its concepts to support multiple APIs and provide an improved structured reasoning pipeline.
 
