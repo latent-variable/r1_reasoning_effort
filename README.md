@@ -1,7 +1,9 @@
 # R1 Reasoning Effort
 
 ## Overview
-**R1 Reasoning Effort** is a multi-API reasoning pipeline within the [open-webui](https://github.com/open-webui/open-webui) that integrates OpenAI and Ollama support for generating responses with different levels of reasoning effort. It allows for iterative refinements in reasoning, incorporating multiple reasoning iterations with context-sensitive responses.
+**R1 Reasoning Effort** is a multi-API reasoning pipeline within [open-webui](https://github.com/open-webui/open-webui) that integrates OpenAI and Ollama, enabling responses with varying levels of reasoning depth. It supports iterative refinement, allowing multiple reasoning cycles with context-aware adjustments.
+
+The *Reasoning Effort* parameter controls how long the model spends thinking before finalizing a response. Ranging from 1 to 100, each increment forces an additional reasoning iteration, enhancing depth and coherence in the generated output.
 
 [![Watch the demo](https://img.youtube.com/vi/9-w2yMoxQBM/0.jpg)](https://youtu.be/9-w2yMoxQBM)
 

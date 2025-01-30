@@ -2,9 +2,9 @@
 title: R1 Reasoning Effort
 author: latent-variable
 github: https://github.com/latent-variable/r1_reasoning_effort
-open-webui: your_webui_link
-version: 0.3
-description: Multi-API reasoning pipeline with OpenAI/Ollama support.
+open-webui: https://openwebui.com/f/latentvariable/r1_reasoning_effort/
+version: 0.1.0
+description: Multi-API reasoning effort pipeline for deepseek-r1 models with OpenAI/Ollama support.
 """
 
 import json
