@@ -51,8 +51,8 @@ class Pipe:
         )
         # Reasoning Parameters
         REASONING_EFFORT: int = Field(
-            default=1, ge=1, le=5,
-            description="Number of reasoning iterations"
+            default=1, ge=1, le=100,
+            description="Number of reasoning iterations 1-100"
         )
         END_THINK_TOKEN: str = Field(
             default="\n</think>\n",
