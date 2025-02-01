@@ -3,8 +3,10 @@ title: R1 Reasoning Effort
 author: latent-variable
 github: https://github.com/latent-variable/r1_reasoning_effort
 open-webui: https://openwebui.com/f/latentvariable/r1_reasoning_effort/
-version: 0.1.0
+Set up instructions: https://o1-at-home.hashnode.dev/run-o1-at-home-privately-think-respond-pipe-tutorial-with-open-webui-ollama
+version: 0.1.1
 description: Multi-API reasoning effort pipeline for deepseek-r1 models with OpenAI/Ollama support.
+Compatible: open-webui v0.5.x
 """
 
 import json
@@ -15,7 +17,6 @@ import asyncio
 from pydantic import BaseModel, Field
 from dataclasses import dataclass
 from fastapi import Request
-from open_webui.utils.misc import get_last_user_message
 from open_webui.routers.ollama import generate_chat_completion as ollama_completion
 from open_webui.routers.openai import generate_chat_completion as openai_completion
 import logging
@@ -57,10 +58,6 @@ class Pipe:
         END_THINK_TOKEN: str = Field(
             default="\n</think>\n",
             description="Token indicating reasoning phase end"
-        )
-        REPLACEMENT_PROMPTS: str = Field(
-            default="""Let me reconsider...\nAnother perspective...""",
-            description="Prompts for extended reasoning (one per line)"
         )
 
     def __init__(self):
@@ -150,12 +147,15 @@ class Pipe:
 
     async def _generate_reasoning(self, messages: List[Dict], __event_emitter__):
         """Core reasoning pipeline with token interception"""
-        attempt = 0
         original_messages = messages.copy()
         self.buffer = ""  # Reset buffer for new response
         while self.current_effort < self.valves.REASONING_EFFORT:
-            attempt += 1
+            
             try:
+
+                status = f"Reasoning Effort step: {self.current_effort+1}"
+                await self.emit_status(status, __event_emitter__, done=False)
+         
                 # Create fresh copy of messages for this attempt
                 current_messages = original_messages.copy()
                 if self.current_effort > 0:
@@ -181,17 +181,16 @@ class Pipe:
                     else:
                         self.current_effort += 1
                         if self.current_effort < self.valves.REASONING_EFFORT:
-                            # 
                             yield "<think>\n"
                             break
                         else:
+                            status = f"Reasoning Complete - Outputing Final Response"
+                            await self.emit_status(status, __event_emitter__, done=False)
                             yield content
 
             except Exception as e:
-                await __event_emitter__({
-                    "type": "status",
-                    "data": {"description": f"Reasoning error: {str(e)}", "done": False}
-                })
+                status = f"Reasoning error: {str(e)}"
+                await self.emit_status(status, __event_emitter__, done=False)
                 break
             
 
@@ -217,12 +216,17 @@ class Pipe:
                         }
                     }
                 })
-
+            status = f"Done!"
+            await self.emit_status(status, __event_emitter__, done=True)
+        
         except Exception as e:
-            await __event_emitter__({
-                "type": "status",
-                "data": {"description": f"Pipeline error: {str(e)}", "done": True}
-            })
+            status = f"Pipeline error: {str(e)}"
+            await self.emit_status(status, __event_emitter__, done=True)
         
         return ""
     
+    async def emit_status(self, status, __event_emitter__, done=False):
+        await __event_emitter__({
+                "type": "status",
+                "data": {"description": status, "done": done}
+            })
