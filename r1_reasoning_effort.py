@@ -4,11 +4,15 @@ author: latent-variable
 github: https://github.com/latent-variable/r1_reasoning_effort
 open-webui: https://openwebui.com/f/latentvariable/r1_reasoning_effort/
 Set up instructions: https://o1-at-home.hashnode.dev/run-o1-at-home-privately-think-respond-pipe-tutorial-with-open-webui-ollama
-version: 0.1.1
+version: 0.2.0
 description: Multi-API reasoning effort pipeline for deepseek-r1 models with OpenAI/Ollama support.
 Compatible: open-webui v0.5.x
-"""
 
+# Acknowledgments
+https://github.com/qunash/r1-overthinker for the idea and original code
+"""
+import os 
+import re
 import json
 import random
 from time import time
@@ -59,6 +63,10 @@ class Pipe:
             default="\n</think>\n",
             description="Token indicating reasoning phase end"
         )
+        FORMAT_TEXT: bool = Field(
+            default=True,
+            description="Nicely display the reasoning text"
+        )
 
     def __init__(self):
         self.type = "manifold"
@@ -66,6 +74,7 @@ class Pipe:
         self.__user__ = None
         self.__request__ = None
         self._reset_state()
+        self.THINK_XML_TAG = os.getenv("THINK_XML_TAG", "thinking")
         self.replacement_prompts = [ 
                 "\nHold on - let me think deeper about this ", 
                 "\nPerhaps a deeper perspective would help ",
@@ -86,14 +95,44 @@ class Pipe:
 
     def _reset_state(self):
         self.current_effort = 0
-        self.generated_tokens = 0
+        self.generated_thinking_tokens = 0
         self.swap_count = 0
         self.buffer = ""
 
     def pipes(self):
         name = f"R1 Reasoning Effort: {self.valves.REASONING_MODEL} Effort: {self.valves.REASONING_EFFORT}"
         return [{"name": name, "id": name}]
+    
+    def format_thinking_tags(self, text: str) -> str:
+        """Format tokens to add '>' only at the start of new lines."""
+        if not self.valves.FORMAT_TEXT:
+            return text 
+        
 
+        if text == '<think>':
+            return f'> {text}\n'
+        
+        if text =='\n':
+            return text
+        
+        if text.startswith('\n'):
+            parts = text.split('\n')
+            formatted_part = []
+            for i, part in enumerate(parts):
+                if i != 0:
+                    formatted_part.append(f"> {part}")
+
+            formatted_text = ' '.join(formatted_part)
+            return formatted_text
+        # Check if the current buffer ends with a newline (indicating a new line start)
+        starts_new_line = self.buffer.endswith('\n')  if self.buffer else False
+        if starts_new_line:
+            formatted_text = f"> {text}"
+            return formatted_text
+        else:
+            return text
+
+    
     async def get_response(self, model: str, messages: List[Dict], stream: bool):
         """Unified API request handler"""
         use_openai = self.valves.USE_OPENAI_REASONING 
@@ -149,6 +188,7 @@ class Pipe:
         """Core reasoning pipeline with token interception"""
         original_messages = messages.copy()
         self.buffer = ""  # Reset buffer for new response
+        self.generated_thinking_tokens =0
         while self.current_effort < self.valves.REASONING_EFFORT:
             
             try:
@@ -161,28 +201,31 @@ class Pipe:
                 if self.current_effort > 0:
                     # Add previous iteration's final response as context
                     extension = random.choice(self.replacement_prompts)
-                    content = self.buffer + extension
-                    current_messages.append({"role": "assistant", "content": content })
-                    yield extension
+                    self.buffer += extension
+                    current_messages.append({"role": "assistant", "content": self.buffer })
+                    yield self.format_thinking_tags(extension)
+                    
 
                 response = await self.get_response(
                     model=self.valves.REASONING_MODEL,
                     messages=current_messages,
                     stream=True
                 )
-
+                found_end=False
                 async for content in self._handle_api_stream(response):
                     
                     # Check for end token in the accumulated buffer
-                    if self.valves.END_THINK_TOKEN  not in content:
+                    if self.valves.END_THINK_TOKEN  not in content and not found_end:
+                        
+                        self.generated_thinking_tokens += 1
+                        yield self.format_thinking_tags(content)
                         self.buffer += content
-                        self.generated_tokens += len(content)
-                        yield content
                     else:
+                        found_end =True
                         self.current_effort += 1
                         if self.current_effort < self.valves.REASONING_EFFORT:
-                            yield "<think>\n"
-                            break
+                            yield self.format_thinking_tags("<think>\n")
+                            break 
                         else:
                             status = f"Reasoning Complete - Outputing Final Response"
                             await self.emit_status(status, __event_emitter__, done=False)
@@ -212,11 +255,11 @@ class Pipe:
                         "role": "assistant-reasoning",
                         "metadata": {
                             "effort": self.current_effort,
-                            "total_tokens": self.generated_tokens
+                            "total_tokens": self.generated_thinking_tokens
                         }
                     }
                 })
-            status = f"Done!"
+            status = f"Completed with {self.generated_thinking_tokens} reasoning tokens"
             await self.emit_status(status, __event_emitter__, done=True)
         
         except Exception as e:
