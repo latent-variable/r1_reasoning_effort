@@ -21,7 +21,7 @@ This project is inspired by [r1-overthinker](https://github.com/qunash/r1-overth
 The core pipeline is implemented in the `Pipe` class. It processes messages, determines reasoning effort, and interacts with the chosen API.
 
 #### Configuration
-Modify the `Valves` with in the open-webui function after setup:
+Modify the `Valves` within the open-webui function after setup:
 [Blog post on how to set a pipe up](https://o1-at-home.hashnode.dev/run-o1-at-home-privately-think-respond-pipe-tutorial-with-open-webui-ollama)
 
 
