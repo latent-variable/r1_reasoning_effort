@@ -4,7 +4,7 @@ author: latent-variable
 github: https://github.com/latent-variable/r1_reasoning_effort
 open-webui: https://openwebui.com/f/latentvariable/r1_reasoning_effort/
 Set up instructions: https://o1-at-home.hashnode.dev/run-o1-at-home-privately-think-respond-pipe-tutorial-with-open-webui-ollama
-version: 0.2.0
+version: 0.2.2
 description: Multi-API reasoning effort pipeline for deepseek-r1 models with OpenAI/Ollama support.
 Compatible: open-webui v0.5.x
 
@@ -100,7 +100,7 @@ class Pipe:
         self.buffer = ""
 
     def pipes(self):
-        name = f"R1 Reasoning Effort: {self.valves.REASONING_MODEL} Effort: {self.valves.REASONING_EFFORT}"
+        name = f"Reasoning_Effort_{self.valves.REASONING_EFFORT}/{self.valves.REASONING_MODEL}"
         return [{"name": name, "id": name}]
     
     def format_thinking_tags(self, text: str) -> str:
@@ -216,7 +216,6 @@ class Pipe:
                     
                     # Check for end token in the accumulated buffer
                     if (self.valves.END_THINK_TOKEN.strip()  not in content.strip()) and not found_end:
-                        
                         self.generated_thinking_tokens += 1
                         yield self.format_thinking_tags(content)
                         self.buffer += content
