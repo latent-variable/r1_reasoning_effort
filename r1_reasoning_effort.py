@@ -60,7 +60,7 @@ class Pipe:
             description="Number of reasoning iterations 1-100"
         )
         END_THINK_TOKEN: str = Field(
-            default="\n</think>\n",
+            default="</think>",
             description="Token indicating reasoning phase end"
         )
         FORMAT_TEXT: bool = Field(
@@ -215,7 +215,7 @@ class Pipe:
                 async for content in self._handle_api_stream(response):
                     
                     # Check for end token in the accumulated buffer
-                    if self.valves.END_THINK_TOKEN  not in content and not found_end:
+                    if (self.valves.END_THINK_TOKEN.strip()  not in content.strip()) and not found_end:
                         
                         self.generated_thinking_tokens += 1
                         yield self.format_thinking_tags(content)
