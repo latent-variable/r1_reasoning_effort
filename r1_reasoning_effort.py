@@ -6,6 +6,7 @@ open-webui: https://openwebui.com/f/latentvariable/r1_reasoning_effort/
 Set up instructions: https://o1-at-home.hashnode.dev/run-o1-at-home-privately-think-respond-pipe-tutorial-with-open-webui-ollama
 version: 0.3.0
 description: Multi-API reasoning effort pipeline for models like deepseek-r1 models with OpenAI/Ollama support.
+Directly compatible with build in reasoning formater 
 Compatible: open-webui v0.5.x
 
 # Acknowledgments
