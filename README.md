@@ -5,7 +5,7 @@
 
 The *Reasoning Effort* parameter controls how long the model spends thinking before finalizing a response. Ranging from 1 to 100, each increment forces an additional reasoning iteration, enhancing depth and coherence in the generated output.
 
-[![Watch the demo](https://img.youtube.com/vi/9-w2yMoxQBM/0.jpg)](https://youtu.be/9-w2yMoxQBM)
+![Reasoning Effort Demo](reasoning_effort.gif)
 
 This project is inspired by [r1-overthinker](https://github.com/qunash/r1-overthinker), extending its concepts to support multiple APIs and provide an improved structured reasoning pipeline.
 
