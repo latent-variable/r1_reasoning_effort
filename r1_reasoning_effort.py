@@ -4,7 +4,7 @@ author: latent-variable
 github: https://github.com/latent-variable/r1_reasoning_effort
 open-webui: https://openwebui.com/f/latentvariable/r1_reasoning_effort/
 Set up instructions: https://o1-at-home.hashnode.dev/run-o1-at-home-privately-think-respond-pipe-tutorial-with-open-webui-ollama
-version: 0.2.3
+version: 0.3.0
 description: Multi-API reasoning effort pipeline for models like deepseek-r1 models with OpenAI/Ollama support.
 Compatible: open-webui v0.5.x
 
@@ -59,15 +59,18 @@ class Pipe:
             default=1, ge=1, le=100,
             description="Number of reasoning iterations 1-100"
         )
+        START_THINK_TOKEN: str = Field(
+            default="<think>",
+            description="Token indicating reasoning phase started"
+        )
         END_THINK_TOKEN: str = Field(
             default="</think>",
             description="Token indicating reasoning phase end"
         )
-        FORMAT_TEXT: bool = Field(
-            default=True,
-            description="Nicely display the reasoning text"
+        TRACK_REASONING_EFFORT: bool = Field(
+            default=False,
+            description="Include the start of each reasoning effort iteration in the responce"
         )
-
     def __init__(self):
         self.type = "manifold"
         self.valves = self.Valves()
@@ -103,34 +106,6 @@ class Pipe:
         name = f"Reasoning_Effort_{self.valves.REASONING_EFFORT}/{self.valves.REASONING_MODEL}"
         return [{"name": name, "id": name}]
     
-    def format_thinking_tags(self, text: str) -> str:
-        """Format tokens to add '>' only at the start of new lines."""
-        if not self.valves.FORMAT_TEXT:
-            return text 
-        
-
-        if text == '<think>':
-            return f'> {text}\n'
-        
-        if text =='\n':
-            return text
-        
-        if text.startswith('\n'):
-            parts = text.split('\n')
-            formatted_part = []
-            for i, part in enumerate(parts):
-                if i != 0:
-                    formatted_part.append(f"> {part}")
-
-            formatted_text = ' '.join(formatted_part)
-            return formatted_text
-        # Check if the current buffer ends with a newline (indicating a new line start)
-        starts_new_line = self.buffer.endswith('\n')  if self.buffer else False
-        if starts_new_line:
-            formatted_text = f"> {text}"
-            return formatted_text
-        else:
-            return text
 
     
     async def get_response(self, model: str, messages: List[Dict], stream: bool):
@@ -189,7 +164,6 @@ class Pipe:
         original_messages = messages.copy()
         self.buffer = ""  # Reset buffer for new response
         self.generated_thinking_tokens =0
-        yield f"Reasoning Effort-{self.current_effort+1}\n"
         while self.current_effort < self.valves.REASONING_EFFORT:
             
             try:
@@ -204,7 +178,7 @@ class Pipe:
                     extension = random.choice(self.replacement_prompts)
                     self.buffer += extension
                     current_messages.append({"role": "assistant", "content": self.buffer })
-                    yield self.format_thinking_tags(extension)
+                    yield extension
                     
 
                 response = await self.get_response(
@@ -214,17 +188,21 @@ class Pipe:
                 )
                 found_end=False
                 async for content in self._handle_api_stream(response):
-                    
                     # Check for end token in the accumulated buffer
                     if (self.valves.END_THINK_TOKEN.strip()  not in content.strip()) and not found_end:
                         self.generated_thinking_tokens += 1
-                        yield self.format_thinking_tags(content)
+                        yield content
+
+                        # Print start of Reasoning Effort
+                        if (self.valves.START_THINK_TOKEN.strip() in content.strip()) and self.valves.TRACK_REASONING_EFFORT:
+                            yield f"Reasoning Effort-{self.current_effort+1}\n"
                         self.buffer += content
                     else:
                         found_end =True
                         self.current_effort += 1
-                        if self.current_effort < self.valves.REASONING_EFFORT:
-                            yield f"\nReasoning Effort-{self.current_effort+1}\n"
+                        if (self.current_effort < self.valves.REASONING_EFFORT):
+                            if self.valves.TRACK_REASONING_EFFORT:
+                                yield f"\nReasoning Effort-{self.current_effort+1}\n"
                             break 
                         else:
                             status = f"Reasoning Complete - Outputing Final Response"
@@ -243,22 +221,12 @@ class Pipe:
         self._reset_state()
         
         if __task__ is not None:
-            return body["messages"][:20]
+            yield body["messages"][:20]
         
         try:
             async for content in self._generate_reasoning(body["messages"], __event_emitter__):
-                
-                await __event_emitter__({
-                    "type": "message",
-                    "data": {
-                        "content": content,
-                        "role": "assistant-reasoning",
-                        "metadata": {
-                            "effort": self.current_effort,
-                            "total_tokens": self.generated_thinking_tokens
-                        }
-                    }
-                })
+                yield content
+
             status = f"Completed with {self.generated_thinking_tokens} reasoning tokens"
             await self.emit_status(status, __event_emitter__, done=True)
         
@@ -266,7 +234,7 @@ class Pipe:
             status = f"Pipeline error: {str(e)}"
             await self.emit_status(status, __event_emitter__, done=True)
         
-        return ""
+        yield""
     
     async def emit_status(self, status, __event_emitter__, done=False):
         await __event_emitter__({
