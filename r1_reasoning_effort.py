@@ -223,19 +223,19 @@ class Pipe:
         
         if __task__ is not None:
             yield body["messages"][:20]
-        
-        try:
-            async for content in self._generate_reasoning(body["messages"], __event_emitter__):
-                yield content
+        else:
+            try:
+                async for content in self._generate_reasoning(body["messages"], __event_emitter__):
+                    yield content
 
-            status = f"Completed with {self.generated_thinking_tokens} reasoning tokens"
-            await self.emit_status(status, __event_emitter__, done=True)
-        
-        except Exception as e:
-            status = f"Pipeline error: {str(e)}"
-            await self.emit_status(status, __event_emitter__, done=True)
-        
-        yield""
+                status = f"Completed with {self.generated_thinking_tokens} reasoning tokens"
+                await self.emit_status(status, __event_emitter__, done=True)
+            
+            except Exception as e:
+                status = f"Pipeline error: {str(e)}"
+                await self.emit_status(status, __event_emitter__, done=True)
+            
+            yield""
     
     async def emit_status(self, status, __event_emitter__, done=False):
         await __event_emitter__({
